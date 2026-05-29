@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Etsy → CJ Integration</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f8f7f4;
+    --surface: #ffffff;
+    --border: #e4e2db;
+    --text: #1a1a18;
+    --muted: #6b6b67;
+    --hint: #a0a09c;
+    --accent: #2563eb;
+    --success: #166534;
+    --success-bg: #dcfce7;
+    --warn: #92400e;
+    --warn-bg: #fef3c7;
+    --danger: #991b1b;
+    --danger-bg: #fee2e2;
+    --info-bg: #eff6ff;
+    --info: #1e40af;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+  .app { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+  .logo { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .logo svg { width: 24px; height: 24px; }
+  .status-bar { display: flex; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .pill-green { background: var(--success-bg); color: var(--success); }
+  .pill-red { background: var(--danger-bg); color: var(--danger); }
+  .pill-gray { background: var(--border); color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .tabs { display: flex; gap: 2px; background: var(--border); border-radius: var(--radius); padding: 3px; margin-bottom: 1.5rem; }
+  .tab { flex: 1; text-align: center; padding: 7px; border-radius: 8px; border: none; background: none; font-size: 13px; color: var(--muted); cursor: pointer; font-weight: 500; transition: all .15s; }
+  .tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .section { display: none; }
+  .section.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 1rem; }
+  .metric-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 1rem; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .metric .num { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+  .metric .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 5px; margin-top: 12px; }
+  input[type=text], input[type=password], input[type=email] {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    font-size: 13px; background: var(--bg); color: var(--text); outline: none;
+  }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+  .btn { padding: 9px 18px; border-radius: var(--radius-sm); border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; }
+  .btn-primary { background: var(--text); color: #fff; }
+  .btn-primary:hover { opacity: .85; }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--bg); }
+  .btn-danger { background: none; color: var(--danger); border: 1px solid var(--border); padding: 6px 10px; font-size: 12px; }
+  .btn-danger:hover { background: var(--danger-bg); }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .gap-8 { gap: 8px; }
+  .mt-1 { margin-top: 8px; }
+  .mt-2 { margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 0; color: var(--muted); font-weight: 500; font-size: 12px; border-bottom: 1px solid var(--border); }
+  td { padding: 11px 0; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: var(--success-bg); color: var(--success); }
+  .badge-warn { background: var(--warn-bg); color: var(--warn); }
+  .badge-red { background: var(--danger-bg); color: var(--danger); }
+  .badge-gray { background: var(--border); color: var(--muted); }
+  .info-box { background: var(--info-bg); border: 1px solid #bfdbfe; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--info); margin-bottom: 1rem; }
+  .log-line { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .log-line:last-child { border-bottom: none; }
+  .log-time { color: var(--hint); min-width: 72px; flex-shrink: 0; }
+  .log-success { color: var(--success); }
+  .log-error { color: var(--danger); }
+  .log-info { color: var(--muted); }
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .toggle-row:last-child { border-bottom: none; }
+  .switch { position: relative; width: 40px; height: 22px; display: inline-block; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .sw { position: absolute; inset: 0; background: var(--border); border-radius: 22px; cursor: pointer; transition: .2s; }
+  .sw::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+  input:checked + .sw { background: #16a34a; }
+  input:checked + .sw::before { transform: translateX(18px); }
+  .empty { text-align: center; padding: 2rem; color: var(--hint); font-size: 13px; }
+  .add-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 1.25rem; }
+  .add-grid label { margin-top: 0; }
+  .add-grid .btn { height: 36px; white-space: nowrap; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: -2px; margin-right: 4px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--text); color: #fff; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; opacity: 0; transform: translateY(10px); transition: all .2s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
+      Etsy → CJ Auto-Forward
+    </div>
+    <div class="status-bar">
+      <span class="pill pill-gray" id="etsy-pill"><span class="dot"></span>Etsy</span>
+      <span class="pill pill-gray" id="cj-pill"><span class="dot"></span>CJ</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('dashboard')">Dashboard</button>
+    <button class="tab" onclick="switchTab('settings')">API Keys</button>
+    <button class="tab" onclick="switchTab('mapping')">SKU Mapping</button>
+    <button class="tab" onclick="switchTab('orders')">Orders</button>
+    <button class="tab" onclick="switchTab('logs')">Log</button>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="section active">
+    <div class="metric-row">
+      <div class="metric"><div class="num" id="m-total">0</div><div class="lbl">Total orders</div></div>
+      <div class="metric"><div class="num" id="m-fwd">0</div><div class="lbl">Diteruskan ke CJ</div></div>
+      <div class="metric"><div class="num" id="m-pend">0</div><div class="lbl">Perlu perhatian</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Status &amp; Kontrol</div>
+      <div class="toggle-row">
+        <span>Auto-forward setiap 15 menit</span>
+        <label class="switch"><input type="checkbox" id="auto-toggle" onchange="toggleAuto(this)"><span class="sw"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>Etsy API</span><span class="pill pill-gray" id="etsy-status-d">Belum tersambung</span>
+      </div>
+      <div class="toggle-row">
+        <span>CJ Dropshipping API</span><span class="pill pill-gray" id="cj-status-d">Belum tersambung</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:1rem;">
+        <div class="card-title" style="margin:0;">Aktivitas terbaru</div>
+        <button class="btn btn-primary btn-sm" onclick="checkNow()" id="check-btn">Cek Order Sekarang</button>
+      </div>
+      <div id="recent-log"><div class="empty">Belum ada aktivitas.</div></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="tab-settings" class="section">
+    <div class="info-box">🔐 API keys disimpan di server kamu sendiri, tidak dibagikan ke pihak mana pun.</div>
+    <div class="card">
+      <div class="card-title">Etsy API</div>
+      <label>Etsy API Key</label><input type="password" id="s-etsy-key" placeholder="Etsy API Key (Keystring)">
+      <label>Etsy Shop ID</label><input type="text" id="s-etsy-shop" placeholder="Contoh: 12345678">
+      <label>Etsy Access Token (OAuth)</label><input type="password" id="s-etsy-token" placeholder="ya29.xxx atau Bearer token">
+    </div>
+    <div class="card">
+      <div class="card-title">CJ Dropshipping API</div>
+      <label>Email Akun CJ</label><input type="email" id="s-cj-email" placeholder="email@kamu.com">
+      <label>Password Akun CJ</label><input type="password" id="s-cj-pass" placeholder="Password CJ Dropshipping">
+    </div>
+    <div style="display:flex; gap:8px; margin-top:4px;">
+      <button class="btn btn-primary" onclick="saveSettings()">Simpan Settings</button>
+      <button class="btn btn-secondary" onclick="testConn()">Tes Koneksi</button>
+    </div>
+  </div>
+
+  <!-- MAPPING -->
+  <div id="tab-mapping" class="section">
+    <div class="info-box">💡 Hubungkan SKU Etsy ke Product ID di CJ. Disimpan permanen dan dipakai otomatis setiap ada order masuk.</div>
+    <div class="card">
+      <div class="card-title">SKU Mapping</div>
+      <table>
+        <thead><tr><th>SKU Etsy</th><th>CJ Product ID</th><th>CJ SKU/VID</th><th>Status</th><th></th></tr></thead>
+        <tbody id="mapping-tbody"><tr><td colspan="5" class="empty">Belum ada mapping.</td></tr></tbody>
+      </table>
+      <div class="add-grid">
+        <div><label>SKU Etsy</label><input type="text" id="m-etsy" placeholder="PIN-ROSE-01"></div>
+        <div><label>CJ Product ID</label><input type="text" id="m-pid" placeholder="2109201234"></div>
+        <div><label>CJ SKU/VID (opsional)</label><input type="text" id="m-vid" placeholder="SKU001"></div>
+        <button class="btn btn-primary" onclick="addMapping()">+ Tambah</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div id="tab-orders" class="section">
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:1rem;">
+        <div class="card-title" style="margin:0;">Riwayat Order</div>
+        <button class="btn btn-secondary btn-sm" onclick="loadData()">Refresh</button>
+      </div>
+      <table>
+        <thead><tr><th>Order ID</th><th>Pembeli</th><th>Produk</th><th>Tanggal</th><th>Status</th></tr></thead>
+        <tbody id="order-tbody"><tr><td colspan="5" class="empty">Belum ada order.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div id="tab-logs" class="section">
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:1rem;">
+        <div class="card-title" style="margin:0;">Activity Log</div>
+        <button class="btn btn-danger btn-sm" onclick="clearLogs()">Hapus Semua</button>
+      </div>
+      <div id="log-wrap"><div class="empty">Belum ada log.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = '';
+
+function toast(msg, dur = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(BASE + path, opts);
+  return res.json();
+}
+
+let appData = { mappings: [], orders: [], logs: [], settings: {} };
+
+async function loadData() {
+  appData = await api('GET', '/api/data');
+  renderAll();
+}
+
+function renderAll() {
+  renderDashboard();
+  renderMappings();
+  renderOrders();
+  renderLogs();
+  fillSettings();
+}
+
+function renderDashboard() {
+  const fwd = appData.orders.filter(o => o.status === 'forwarded').length;
+  const pend = appData.orders.filter(o => o.status !== 'forwarded').length;
+  document.getElementById('m-total').textContent = appData.orders.length;
+  document.getElementById('m-fwd').textContent = fwd;
+  document.getElementById('m-pend').textContent = pend;
+  document.getElementById('auto-toggle').checked = !!appData.settings.autoForward;
+
+  const etsy = appData.settings._etsyOk;
+  const cj = appData.settings._cjOk;
+  setStatusPill('etsy-pill', etsy, 'Etsy');
+  setStatusPill('cj-pill', cj, 'CJ');
+  setStatusPill('etsy-status-d', etsy, etsy ? 'Tersambung' : 'Belum tersambung');
+  setStatusPill('cj-status-d', cj, cj ? 'Tersambung' : 'Belum tersambung');
+
+  const logEl = document.getElementById('recent-log');
+  const recent = appData.logs.slice(0, 6);
+  if (!recent.length) { logEl.innerHTML = '<div class="empty">Belum ada aktivitas.</div>'; return; }
+  logEl.innerHTML = recent.map(l => logLine(l)).join('');
+}
+
+function setStatusPill(id, ok, label) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'pill ' + (ok ? 'pill-green' : 'pill-gray');
+  el.innerHTML = `<span class="dot"></span>${label}`;
+}
+
+function logLine(l) {
+  const cls = l.type === 'success' ? 'log-success' : l.type === 'error' ? 'log-error' : 'log-info';
+  return `<div class="log-line"><span class="log-time">${l.time}</span><span class="${cls}">${l.msg}</span></div>`;
+}
+
+function renderLogs() {
+  const el = document.getElementById('log-wrap');
+  if (!appData.logs.length) { el.innerHTML = '<div class="empty">Belum ada log.</div>'; return; }
+  el.innerHTML = appData.logs.map(logLine).join('');
+}
+
+function fillSettings() {
+  const s = appData.settings;
+  document.getElementById('s-etsy-key').value = s.etsyApiKey || '';
+  document.getElementById('s-etsy-shop').value = s.etsyShopId || '';
+  document.getElementById('s-etsy-token').value = s.etsyAccessToken || '';
+  document.getElementById('s-cj-email').value = s.cjEmail || '';
+}
+
+function renderMappings() {
+  const tbody = document.getElementById('mapping-tbody');
+  if (!appData.mappings.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Belum ada mapping.</td></tr>'; return; }
+  tbody.innerHTML = appData.mappings.map(m => `
+    <tr>
+      <td><strong>${m.etsySku}</strong></td>
+      <td style="color:var(--muted)">${m.cjPid}</td>
+      <td style="color:var(--muted)">${m.cjVid || m.cjSku || '-'}</td>
+      <td><span class="badge badge-green">Aktif</span></td>
+      <td><button class="btn btn-danger" onclick="deleteMapping('${m.etsySku}')">Hapus</button></td>
+    </tr>`).join('');
+}
+
+function renderOrders() {
+  const tbody = document.getElementById('order-tbody');
+  if (!appData.orders.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">Belum ada order.</td></tr>'; return; }
+  tbody.innerHTML = appData.orders.map(o => {
+    const bc = o.status === 'forwarded' ? 'badge-green' : o.status === 'no_mapping' ? 'badge-warn' : 'badge-red';
+    const bl = o.status === 'forwarded' ? 'Diteruskan' : o.status === 'no_mapping' ? 'Perlu mapping' : 'Error';
+    return `<tr>
+      <td><strong>#${o.id}</strong></td>
+      <td>${o.buyer}</td>
+      <td style="color:var(--muted)">${o.items}</td>
+      <td style="color:var(--hint)">${o.date}</td>
+      <td><span class="badge ${bc}">${bl}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveSettings() {
+  const body = {
+    etsyApiKey: document.getElementById('s-etsy-key').value.trim(),
+    etsyShopId: document.getElementById('s-etsy-shop').value.trim(),
+    etsyAccessToken: document.getElementById('s-etsy-token').value.trim(),
+    cjEmail: document.getElementById('s-cj-email').value.trim(),
+    cjPassword: document.getElementById('s-cj-pass').value
+  };
+  await api('POST', '/api/settings', body);
+  toast('✓ Settings tersimpan!');
+  await loadData();
+}
+
+async function testConn() {
+  toast('Mengetes koneksi...');
+  const res = await api('GET', '/api/test');
+  toast(`Etsy: ${res.etsy ? '✓ OK' : '✗ Gagal'} | CJ: ${res.cj ? '✓ OK' : '✗ Gagal'}`, 4000);
+  await loadData();
+}
+
+async function addMapping() {
+  const etsySku = document.getElementById('m-etsy').value.trim();
+  const cjPid = document.getElementById('m-pid').value.trim();
+  const cjVid = document.getElementById('m-vid').value.trim();
+  if (!etsySku || !cjPid) { toast('SKU Etsy dan CJ Product ID wajib diisi.'); return; }
+  const res = await api('POST', '/api/mapping', { etsySku, cjPid, cjVid });
+  if (res.error) { toast('Error: ' + res.error); return; }
+  document.getElementById('m-etsy').value = '';
+  document.getElementById('m-pid').value = '';
+  document.getElementById('m-vid').value = '';
+  toast('✓ Mapping ditambahkan!');
+  await loadData();
+}
+
+async function deleteMapping(sku) {
+  if (!confirm('Hapus mapping untuk SKU: ' + sku + '?')) return;
+  await api('DELETE', '/api/mapping/' + encodeURIComponent(sku));
+  toast('Mapping dihapus.');
+  await loadData();
+}
+
+async function checkNow() {
+  const btn = document.getElementById('check-btn');
+  btn.innerHTML = '<span class="spinner"></span>Mengecek...';
+  btn.disabled = true;
+  const res = await api('POST', '/api/check');
+  btn.innerHTML = 'Cek Order Sekarang';
+  btn.disabled = false;
+  toast(`Selesai: ${res.forwarded} diteruskan, ${res.skipped} dilewati.`, 4000);
+  await loadData();
+}
+
+async function toggleAuto(el) {
+  await api('POST', '/api/settings', { autoForward: el.checked });
+  toast('Auto-forward ' + (el.checked ? 'diaktifkan' : 'dinonaktifkan'));
+}
+
+async function clearLogs() {
+  await api('DELETE', '/api/logs');
+  await loadData();
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['dashboard','settings','mapping','orders','logs'][i] === name);
+  });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+loadData();
+</script>
+</body>
+</html>
